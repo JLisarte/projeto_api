@@ -1,7 +1,7 @@
 const knex = require("../database/knex")
 
 class NotesController {
-  async create(request, response){
+  async create(request, response) {
     const { title, description, tags, links } = request.body
     const { user_id } = request.params
 
@@ -11,26 +11,60 @@ class NotesController {
       user_id,
     })
 
-    const linkInsert = links.map(link => {
+    const linkInsert = links.map((link) => {
       return {
         note_id,
-        url: link
+        url: link,
       }
     })
 
     await knex("links").insert(linkInsert)
 
-    const tagsInsert = tags.map(name => {
+    const tagsInsert = tags.map((name) => {
       return {
         note_id,
         name,
-        user_id
+        user_id,
       }
     })
 
     await knex("tags").insert(tagsInsert)
 
     response.json()
+  }
+
+  async show(request, response) {
+    const { id } = request.params
+
+    const note = await knex("notes").where({ id }).first()
+    const tags = await knex("tags").where({ note_id: id }).orderBy("name")
+    const links = await knex("links")
+      .where({ note_id: id })
+      .orderBy("created_at")
+
+    return response.json({
+      ...note,
+      tags,
+      links,
+    })
+  }
+
+  async delete(request, response) {
+    const { id } = request.params
+
+    await knex("notes").where({ id }).delete()
+
+    return response.json()
+  }
+
+  async index(request, response) {
+    const { user_id } = request.query
+
+    const notes = await knex("notes")
+      .where({ user_id })
+      .orderBy("title")
+
+    return response.json(notes)
   }
 }
 
